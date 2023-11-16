@@ -59,11 +59,13 @@ import com.android.volley.toolbox.HttpHeaderParser;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.gson.Gson;
 import com.handheld.uhfr.UHFRManager;
 import com.pda.uhf_g.MainActivity;
 import com.pda.uhf_g.R;
 import com.pda.uhf_g.adapter.EPCListViewAdapter;
 import com.pda.uhf_g.adapter.RecycleViewAdapter;
+import com.pda.uhf_g.entity.ItemRequest;
 import com.pda.uhf_g.entity.TagInfo;
 import com.pda.uhf_g.ui.base.BaseFragment;
 import com.pda.uhf_g.util.CheckCommunication;
@@ -509,23 +511,35 @@ public class InventoryFragment extends BaseFragment {
         intent.setData(uri);
         mainActivity.sendBroadcast(intent);
     }
-
+    private void getCurrentData(List<ItemRequest> itemRequestList){
+        for (TagInfo tagInfo :
+                tagInfoList) {
+            String epc = tagInfo.getEpc();
+            String count = tagInfo.getEpc();
+            itemRequestList.add(new ItemRequest(epc,count));
+        }
+//        itemRequestList.add(new ItemRequest("IPHONE 15 Pro","10"));
+//        itemRequestList.add(new ItemRequest("IPHONE 15 Pro","10"));
+//        itemRequestList.add(new ItemRequest("IPHONE 13 Pro","40"));
+//        itemRequestList.add(new ItemRequest("Samsung 23 utra","30"));
+    }
+    private String getJsonRequestBody(List<ItemRequest> itemRequestList){
+        return new Gson().toJson(itemRequestList);
+    }
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss");
     @OnClick(R.id.button_submit)
     public void onSubmit(){
-        String url ="https://jqn7pjxs-5289.asse.devtunnels.ms/inventory";
-        //loadingPB.setVisibility(View.VISIBLE);
-        Map<String, String> params = new HashMap<String, String>();
-        params.put("itemCode", "Item Code 1000");
-        params.put("quantity", "1000");
-        String json = new JSONObject(params).toString();
-
-        OkHttpClient client = new OkHttpClient();
+        if(tagInfoList.isEmpty())return;
+        String url ="http://10.0.2.2:5289/inventory/counting/multi";
+        List<ItemRequest> itemRequestList = new ArrayList<>();
+        getCurrentData(itemRequestList);
+        String jsonRequestBody = getJsonRequestBody(itemRequestList);
         final MediaType JSON = MediaType.get("application/json");
-        RequestBody body = RequestBody.create(json,JSON);
+        RequestBody requestBody = RequestBody.create(jsonRequestBody,JSON);
+        OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url(url)
-                .post(body)
+                .post(requestBody)
                 .build();
         client.newCall(request).enqueue(new Callback() {
             @Override
@@ -535,7 +549,7 @@ public class InventoryFragment extends BaseFragment {
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                showToast("Success");
+                Log.d("Response", response.body().toString());
             }
         });
     }
