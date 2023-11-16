@@ -1,19 +1,57 @@
 package com.pda.uhf_g.ui.fragment;
+
 import android.Manifest;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
+import android.text.TextUtils;
+import android.util.Log;
+import android.view.KeyEvent;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.ListView;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.DividerItemDecoration;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.gson.Gson;
+import com.handheld.uhfr.UHFRManager;
+import com.pda.uhf_g.MainActivity;
+import com.pda.uhf_g.R;
+import com.pda.uhf_g.adapter.EPCListViewAdapter;
+import com.pda.uhf_g.entity.ItemRequest;
+import com.pda.uhf_g.entity.TagInfo;
+import com.pda.uhf_g.ui.base.BaseFragment;
+import com.pda.uhf_g.util.ExcelUtil;
+import com.pda.uhf_g.util.LoadingAlert;
+import com.pda.uhf_g.util.LogUtil;
+import com.pda.uhf_g.util.SharedUtil;
+import com.pda.uhf_g.util.UtilSound;
+import com.uhf.api.cls.Reader;
+
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
+import java.util.Timer;
+import java.util.TimerTask;
+
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
@@ -28,77 +66,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Message;
-import android.text.TextUtils;
-import android.util.JsonReader;
-import android.util.Log;
-import android.view.KeyEvent;
-import android.view.LayoutInflater;
-import android.view.MotionEvent;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
-import android.widget.ListView;
-import android.widget.ProgressBar;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.TextView;
-import android.widget.Toast;
-
-import com.android.volley.AuthFailureError;
-import com.android.volley.NetworkResponse;
-import com.android.volley.RequestQueue;
-import com.android.volley.VolleyError;
-import com.android.volley.VolleyLog;
-import com.android.volley.toolbox.HttpHeaderParser;
-import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
-import com.google.gson.Gson;
-import com.handheld.uhfr.UHFRManager;
-import com.pda.uhf_g.MainActivity;
-import com.pda.uhf_g.R;
-import com.pda.uhf_g.adapter.EPCListViewAdapter;
-import com.pda.uhf_g.adapter.RecycleViewAdapter;
-import com.pda.uhf_g.entity.ItemRequest;
-import com.pda.uhf_g.entity.TagInfo;
-import com.pda.uhf_g.ui.base.BaseFragment;
-import com.pda.uhf_g.util.CheckCommunication;
-import com.pda.uhf_g.util.ExcelUtil;
-import com.pda.uhf_g.util.GlobalClient;
-import com.pda.uhf_g.util.LogUtil;
-import com.pda.uhf_g.util.SharedUtil;
-import com.pda.uhf_g.util.UtilSound;
-import com.uhf.api.cls.Reader;
-
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.Timer;
-import java.util.TimerTask;
-
-import javax.net.ssl.HttpsURLConnection;
 
 public class InventoryFragment extends BaseFragment {
 
@@ -130,6 +97,7 @@ public class InventoryFragment extends BaseFragment {
 //    @BindView(R.id.progressBar)
 //    ProgressBar loadingPB;
     private EPCListViewAdapter epcListViewAdapter ;
+    AlertDialog.Builder builder;
     private Map<String, TagInfo> tagInfoMap = new LinkedHashMap<String, TagInfo>();//
     private List<TagInfo> tagInfoList = new ArrayList<TagInfo>();//
     private MainActivity mainActivity ;
@@ -518,10 +486,10 @@ public class InventoryFragment extends BaseFragment {
             String count = tagInfo.getEpc();
             itemRequestList.add(new ItemRequest(epc,count));
         }
-//        itemRequestList.add(new ItemRequest("IPHONE 15 Pro","10"));
-//        itemRequestList.add(new ItemRequest("IPHONE 15 Pro","10"));
-//        itemRequestList.add(new ItemRequest("IPHONE 13 Pro","40"));
-//        itemRequestList.add(new ItemRequest("Samsung 23 utra","30"));
+        itemRequestList.add(new ItemRequest("IPHONE 15 Pro","10"));
+        itemRequestList.add(new ItemRequest("IPHONE 15 Pro","10"));
+        itemRequestList.add(new ItemRequest("IPHONE 13 Pro","40"));
+        itemRequestList.add(new ItemRequest("Samsung 23 utra","30"));
     }
     private String getJsonRequestBody(List<ItemRequest> itemRequestList){
         return new Gson().toJson(itemRequestList);
@@ -529,7 +497,9 @@ public class InventoryFragment extends BaseFragment {
     SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH-mm-ss");
     @OnClick(R.id.button_submit)
     public void onSubmit(){
-        if(tagInfoList.isEmpty())return;
+        LoadingAlert loadingAlert = new LoadingAlert(this.mainActivity);
+        loadingAlert.startAlertDialog();
+       // if(tagInfoList.isEmpty())return;
         String url ="http://10.0.2.2:5289/inventory/counting/multi";
         List<ItemRequest> itemRequestList = new ArrayList<>();
         getCurrentData(itemRequestList);
@@ -541,17 +511,36 @@ public class InventoryFragment extends BaseFragment {
                 .url(url)
                 .post(requestBody)
                 .build();
+        builder = new AlertDialog.Builder(this.getContext());
         client.newCall(request).enqueue(new Callback() {
             @Override
             public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                showToast("Failed");
+                loadingAlert.closeAlertDialog();
+                showSuccessMessage();
             }
 
             @Override
             public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                Log.d("Response", response.body().toString());
+                loadingAlert.closeAlertDialog();
+                showFailedMessage();
             }
         });
+    }
+    private void showSuccessMessage(){
+        builder.setTitle("Success")
+                .setMessage("Transaction Completed Successfully!")
+                .setCancelable(true)
+                .setPositiveButton("OK", (dialogInterface, i) -> {
+
+                });
+    }
+    private void showFailedMessage(){
+        builder.setTitle("Error")
+                .setMessage("Oops, something went wrong. Please try again later")
+                .setCancelable(true)
+                .setPositiveButton("OK", (dialogInterface, i) -> {
+
+                }).show();
     }
     @OnClick(R.id.button_excel)
     public void fab_excel() {
